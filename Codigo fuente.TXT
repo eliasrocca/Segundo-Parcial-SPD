@@ -1,0 +1,149 @@
+#include <IRremote.h>
+#include <LiquidCrystal.h>
+#include <Servo.h>
+
+#define RECV_PIN 11
+#define IR_ON 0
+#define IR_OFF 2
+#define LED_ROJO 13
+#define LED_VERDE 12
+#define SENSOR_TEMP A0
+#define TIEMPO 1500
+
+
+LiquidCrystal lcd(2,3,4,5,6,7);
+Servo myservo;
+
+int incendio = 60;
+int estadoIncendio = 0;
+int estadoNormal = 1;
+int botonPulsado;
+float temperaturaDetectada = 0;
+
+IRrecv irrecv(RECV_PIN);
+
+
+
+void setup()
+{
+  Serial.begin(9600);
+  IrReceiver.begin(RECV_PIN);   
+  lcd.begin(16,2);                        
+  myservo.attach(9,500,2500);
+  myservo.write(0);
+  pinMode(LED_ROJO, OUTPUT);
+  pinMode(LED_VERDE, OUTPUT);
+  
+}
+
+void encender(int led)
+{
+  digitalWrite(led , HIGH);
+}
+
+void apagar(int led)
+{
+  digitalWrite(led , LOW);
+}
+
+void detectorEstaciones(int temp,int tempMin, int tempMax, int estacion)
+{
+  if(temp >= tempMin && temp < tempMax)
+  {
+    lcd.setCursor(0,1);
+    switch(estacion)
+    {
+      case 1:
+      	lcd.print("Invierno");
+		delay(TIEMPO);
+      	lcd.clear();
+      	break;
+      case 2:
+      	lcd.print("Otonio");
+      	delay(TIEMPO);
+      	lcd.clear();
+      	break;
+      case 3:
+      	lcd.print("Primavera");
+        delay(TIEMPO);
+      	lcd.clear();
+      	break;
+      case 4:
+      	lcd.print("Verano");
+      	delay(TIEMPO);
+      	lcd.clear();
+      	break;
+
+    }
+  }
+}
+
+
+
+  void loop(){ 
+
+  temperaturaDetectada = map(analogRead(SENSOR_TEMP),20,350,-35,100);
+  lcd.setCursor(0,0);
+  lcd.print(temperaturaDetectada);
+  
+  if(temperaturaDetectada > incendio || estadoIncendio == 1)
+  {
+    lcd.setCursor(0,1);
+    lcd.print("HAY UN INCENDIO!!!");
+    encender(LED_ROJO);
+    apagar(LED_VERDE);
+    myservo.write(360);
+    delay(TIEMPO);
+  
+    lcd.clear();
+  }
+  else
+  {
+    encender(LED_VERDE);
+    apagar(LED_ROJO);
+    if(temperaturaDetectada >= -15 && temperaturaDetectada < 40)
+    {
+      detectorEstaciones(temperaturaDetectada,-15, 7, 1);
+      detectorEstaciones(temperaturaDetectada,7, 12, 2);
+      detectorEstaciones(temperaturaDetectada,12, 23, 3);
+      detectorEstaciones(temperaturaDetectada,23, 40, 4);
+      
+      myservo.write(0);
+    }
+    else
+    {
+      lcd.setCursor(0,1);
+      lcd.print("TEMP. ANORMAL!!");
+      apagar(LED_VERDE);
+      encender(LED_ROJO);
+      delay(TIEMPO);
+      lcd.clear();
+    }
+  }
+
+  if(IrReceiver.decode())     
+  {
+    IrReceiver.resume();          
+    botonPulsado = IrReceiver.decodedIRData.command;
+    switch(botonPulsado) 
+    {
+      case 0:
+      	estadoIncendio = 1;
+      	estadoNormal = 0;
+      	Serial.println("Se activo la alarma de incendio");
+        break;
+      
+      case 2: 
+        estadoNormal = 1;
+        estadoIncendio = 0;
+        Serial.println("Se desactivo la alarma de incendio");
+        break;
+
+    }
+  }
+}
+
+  
+
+  
+
