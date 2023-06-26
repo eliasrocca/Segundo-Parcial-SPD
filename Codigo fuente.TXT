@@ -17,6 +17,7 @@ Servo myservo;
 int incendio = 60;
 int estadoIncendio = 0;
 int estadoNormal = 1;
+bool estadoPrendido = true;
 int botonPulsado;
 float temperaturaDetectada = 0;
 
@@ -84,60 +85,73 @@ void detectorEstaciones(int temp,int tempMin, int tempMax, int estacion)
 
   temperaturaDetectada = map(analogRead(SENSOR_TEMP),20,350,-35,100);
   lcd.setCursor(0,0);
-  lcd.print(temperaturaDetectada);
   
-  if(temperaturaDetectada > incendio || estadoIncendio == 1)
-  {
-    lcd.setCursor(0,1);
-    lcd.print("HAY UN INCENDIO!!!");
-    encender(LED_ROJO);
-    apagar(LED_VERDE);
-    myservo.write(360);
-    delay(TIEMPO);
   
-    lcd.clear();
-  }
-  else
+  if(estadoPrendido)
   {
-    encender(LED_VERDE);
-    apagar(LED_ROJO);
-    if(temperaturaDetectada >= -15 && temperaturaDetectada < 40)
+    lcd.print(temperaturaDetectada);
+    if(temperaturaDetectada > incendio || estadoIncendio == 1)
     {
-      detectorEstaciones(temperaturaDetectada,-15, 7, 1);
-      detectorEstaciones(temperaturaDetectada,7, 12, 2);
-      detectorEstaciones(temperaturaDetectada,12, 23, 3);
-      detectorEstaciones(temperaturaDetectada,23, 40, 4);
-      
-      myservo.write(0);
+        lcd.setCursor(0,1);
+        lcd.print("HAY UN INCENDIO!!!");
+        encender(LED_ROJO);
+        apagar(LED_VERDE);
+        myservo.write(360);
+        delay(TIEMPO);
+
+        lcd.clear();
     }
     else
     {
-      lcd.setCursor(0,1);
-      lcd.print("TEMP. ANORMAL!!");
-      apagar(LED_VERDE);
-      encender(LED_ROJO);
-      delay(TIEMPO);
-      lcd.clear();
+
+      if(temperaturaDetectada >= -15 && temperaturaDetectada < 40)
+      {
+          detectorEstaciones(temperaturaDetectada,-15, 7, 1);
+          detectorEstaciones(temperaturaDetectada,7, 12, 2);
+          detectorEstaciones(temperaturaDetectada,12, 23, 3);
+          detectorEstaciones(temperaturaDetectada,23, 40, 4);
+          encender(LED_VERDE);
+      	  apagar(LED_ROJO);
+          myservo.write(0);
+      }
+      else
+      {
+          lcd.setCursor(0,1);
+          lcd.print("TEMP. ANORMAL!!");
+          apagar(LED_VERDE);
+          encender(LED_ROJO);
+          delay(TIEMPO);
+          lcd.clear();
+      }
     }
+
+
   }
 
   if(IrReceiver.decode())     
   {
     IrReceiver.resume();          
     botonPulsado = IrReceiver.decodedIRData.command;
+    
     switch(botonPulsado) 
     {
       case 0:
+        estadoPrendido = !estadoPrendido;
+        break;
+      
+      case 2: 
+      	estadoNormal = 1;
+        estadoIncendio = 0;
+        Serial.println("Se desactivo la alarma de incendio");
+        break;
+      
+      case 14:
       	estadoIncendio = 1;
       	estadoNormal = 0;
       	Serial.println("Se activo la alarma de incendio");
         break;
       
-      case 2: 
-        estadoNormal = 1;
-        estadoIncendio = 0;
-        Serial.println("Se desactivo la alarma de incendio");
-        break;
+	
 
     }
   }
